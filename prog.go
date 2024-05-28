@@ -297,15 +297,74 @@ func (p *BPFProg) AttachXDP(deviceName string) (*BPFLink, error) {
 		return nil, fmt.Errorf("failed to attach xdp on device %s to program %s: %w", deviceName, p.Name(), errno)
 	}
 
+	bpfLinkLegacy := &bpfLinkLegacy{
+		attachType: BPFAttachTypeXDP,
+		devName:    deviceName,
+		xdpFlag:    XDPFlagsReplace,
+	}
+
 	bpfLink := &BPFLink{
 		link:      linkC,
 		prog:      p,
 		linkType:  XDP,
 		eventName: fmt.Sprintf("xdp-%s-%s", p.Name(), deviceName),
+		legacy:    bpfLinkLegacy,
 	}
 	p.module.links = append(p.module.links, bpfLink)
 
 	return bpfLink, nil
+}
+
+func (p *BPFProg) AttachXDPLegacy(deviceName string, flag XDPFlags) (*BPFLink, error) {
+	optsC := &C.struct_bpf_xdp_attach_opts{
+		sz:          C.ulong(unsafe.Sizeof(C.struct_bpf_xdp_attach_opts{})),
+		old_prog_fd: 0,
+	}
+
+	iface, err := net.InterfaceByName(deviceName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find device by name %s: %w", deviceName, err)
+	}
+
+	retC, errno := C.bpf_xdp_attach(C.int(iface.Index), C.int(p.FileDescriptor()), C.uint(flag),
+		(*C.struct_bpf_xdp_attach_opts)(unsafe.Pointer(optsC)))
+	if retC < 0 {
+		return nil, fmt.Errorf("failed to attach xdp: %w", errno)
+	}
+
+	bpfLinkLegacy := &bpfLinkLegacy{
+		attachType: BPFAttachTypeXDP,
+		devName:    deviceName,
+		xdpFlag:    0,
+	}
+	fakeBpfLink := &BPFLink{
+		link:      nil,
+		prog:      p,
+		eventName: fmt.Sprintf("xdp-%s-%s", p.Name(), deviceName),
+		linkType:  XDP,
+		legacy:    bpfLinkLegacy,
+	}
+
+	return fakeBpfLink, nil
+}
+
+func (p *BPFProg) DetachXDPLegacy(deviceName string, flag XDPFlags) error {
+	optsC := &C.struct_bpf_xdp_attach_opts{
+		sz:          C.ulong(unsafe.Sizeof(C.struct_bpf_xdp_attach_opts{})),
+		old_prog_fd: C.int(p.FileDescriptor()),
+	}
+
+	iface, err := net.InterfaceByName(deviceName)
+	if err != nil {
+		return fmt.Errorf("failed to find device by name %s: %w", deviceName, err)
+	}
+	retC, errno := C.bpf_xdp_detach(C.int(iface.Index), C.uint(flag),
+		(*C.struct_bpf_xdp_attach_opts)(unsafe.Pointer(optsC)))
+	if retC < 0 {
+		return fmt.Errorf("failed to detach xdp: %s", errno)
+	}
+
+	return nil
 }
 
 func (p *BPFProg) AttachTracepoint(category, name string) (*BPFLink, error) {

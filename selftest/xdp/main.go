@@ -35,7 +35,18 @@ func main() {
 		os.Exit(-1)
 	}
 
-	_, err = xdpProg.AttachXDP(deviceName)
+	// test detach for AttachXDPLegacy
+	link, err := xdpProg.AttachXDPLegacy(deviceName, bpf.XDPFlagsReplace)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	err = link.Destroy()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
+	}
+
+	link, err = xdpProg.AttachXDP(deviceName)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
@@ -71,7 +82,12 @@ recvLoop:
 			break recvLoop
 		}
 	}
-
+	// test detach for AtttachXDP
+	err = link.Destroy()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
+	}
 	rb.Stop()
 	rb.Close()
 }

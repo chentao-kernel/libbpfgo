@@ -16,7 +16,8 @@
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-#include <linux/bpf.h> // uapi
+#include <linux/bpf.h>     // uapi
+#include <linux/if_link.h> // uapi
 
 void cgo_libbpf_set_print_fn();
 

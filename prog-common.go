@@ -48,6 +48,19 @@ const (
 	BPFProgTypeSyscall               BPFProgType = C.BPF_PROG_TYPE_SYSCALL
 )
 
+// XDPFlags
+type XDPFlags uint32
+
+const (
+	XDPFlagsUpdateIfNoExist XDPFlags = C.XDP_FLAGS_UPDATE_IF_NOEXIST
+	XDPFlagsSkbMode         XDPFlags = C.XDP_FLAGS_SKB_MODE
+	XDPFlagsDrvMode         XDPFlags = C.XDP_FLAGS_DRV_MODE
+	XDPFlagsHwMode          XDPFlags = C.XDP_FLAGS_HW_MODE
+	XDPFlagsReplace         XDPFlags = C.XDP_FLAGS_REPLACE
+	XDPFlagsModes           XDPFlags = C.XDP_FLAGS_MODES
+	XDPFlagsMask            XDPFlags = C.XDP_FLAGS_MASK
+)
+
 // Deprecated: Convert type directly instead.
 func (t BPFProgType) Value() uint64 { return uint64(t) }
 

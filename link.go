@@ -42,6 +42,8 @@ const (
 type bpfLinkLegacy struct {
 	attachType BPFAttachType
 	cgroupDir  string
+	devName    string
+	xdpFlag    XDPFlags
 }
 
 type BPFLink struct {
@@ -65,7 +67,7 @@ func (l *BPFLink) DestroyLegacy(linkType LinkType) error {
 }
 
 func (l *BPFLink) Destroy() error {
-	if l.legacy != nil {
+	if l.legacy != nil && l.linkType != XDP {
 		return l.DestroyLegacy(l.linkType)
 	}
 	if retC := C.bpf_link__destroy(l.link); retC < 0 {
@@ -73,6 +75,16 @@ func (l *BPFLink) Destroy() error {
 	}
 
 	l.link = nil
+
+	// dextroy xdp link can not detach xdp, so detach it here for xdp.
+	// DetachXDPLegacy useful for both AttachXDP and AttachXDPLegacy
+	// refrence: https://github.com/torvalds/linux/blob/e0cce98fe279b64f4a7d81b7f5c3a23d80b92fbc/tools/testing/selftests/bpf/prog_tests/xdp_link.c#L56
+	if l.linkType == XDP {
+		err := l.prog.DetachXDPLegacy(l.legacy.devName, l.legacy.xdpFlag)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
